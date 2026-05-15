@@ -1,0 +1,10 @@
+{
+  "name": "Remix: Pratham-Chikitse",
+  "description": "A First-Aid Emergency Offline Guide providing life-saving medical guidance in Kannada and English, featuring step-by-step instructions and a simulated hospital finder.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

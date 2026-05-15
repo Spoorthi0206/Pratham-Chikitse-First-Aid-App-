@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 1. Primitive Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // MANDATORY: Verify email for security
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerified() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // 2. Validation Blueprints (Hardened)
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['name', 'phone', 'emergencyContact', 'emergencyPhone', 'bloodGroup', 'updatedAt'])
+        && (data.keys().hasAll(['medicalNotes']) ? data.keys().size() == 7 : data.keys().size() == 6)
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 20
+        && data.emergencyContact is string && data.emergencyContact.size() > 0 && data.emergencyContact.size() <= 100
+        && data.emergencyPhone is string && data.emergencyPhone.size() >= 5 && data.emergencyPhone.size() <= 20
+        && data.bloodGroup is string && data.bloodGroup.size() <= 10
+        && (!data.keys().hasAll(['medicalNotes']) || (data.medicalNotes is string && data.medicalNotes.size() <= 1000))
+        && data.updatedAt == request.time;
+    }
+
+    function isValidHospital(data) {
+      return data.keys().hasAll(['name', 'phone', 'updatedAt'])
+        && data.keys().size() <= 9
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 20
+        && (!data.keys().hasAll(['city']) || (data.city is string && data.city.size() <= 100))
+        && (!data.keys().hasAll(['area']) || (data.area is string && data.area.size() <= 100))
+        && (!data.keys().hasAll(['lat']) || (data.lat == null || (data.lat is number && data.lat >= -90 && data.lat <= 90)))
+        && (!data.keys().hasAll(['lng']) || (data.lng == null || (data.lng is number && data.lng >= -180 && data.lng <= 180)))
+        && (!data.keys().hasAll(['rating']) || (data.rating is number && data.rating >= 0 && data.rating <= 5))
+        && (!data.keys().hasAll(['specialties']) || (data.specialties is list && data.specialties.size() <= 20))
+        && data.updatedAt == request.time;
+    }
+
+    // 3. Match Blocks
+    match /users/{userId} {
+      // Identity Gate
+      match /profile/medical {
+        allow get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidUserProfile(incoming());
+        allow update: if isOwner(userId) && isValidUserProfile(incoming()) 
+          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'emergencyContact', 'emergencyPhone', 'bloodGroup', 'medicalNotes', 'updatedAt']);
+        allow delete: if isOwner(userId);
+      }
+
+      match /hospitals/{hospitalId} {
+        // Secure List: Always check userId
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(hospitalId);
+        allow create: if isOwner(userId) && isValidId(hospitalId) && isValidHospital(incoming());
+        allow update: if isOwner(userId) && isValidId(hospitalId) && isValidHospital(incoming())
+          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'city', 'area', 'lat', 'lng', 'rating', 'specialties', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(hospitalId);
+      }
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Medical and personal details of the user for emergency situations",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Full name of the user" },
+        "phone": { "type": "string", "description": "User's phone number" },
+        "emergencyContact": { "type": "string", "description": "Name of emergency contact person" },
+        "emergencyPhone": { "type": "string", "description": "Phone number of emergency contact person" },
+        "bloodGroup": { "type": "string", "description": "User's blood group" },
+        "medicalNotes": { "type": "string", "description": "Allergies, medications, and medical conditions" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last updated timestamp" }
+      },
+      "required": ["name", "phone", "emergencyContact", "emergencyPhone", "bloodGroup"]
+    },
+    "CustomHospital": {
+      "title": "Custom Hospital",
+      "description": "A hospital or emergency center added by the user",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Hospital name" },
+        "phone": { "type": "string", "description": "Contact phone number" },
+        "city": { "type": "string", "description": "City location" },
+        "area": { "type": "string", "description": "Local area or neighborhood" },
+        "lat": { "type": "number", "description": "Latitude coordinate" },
+        "lng": { "type": "number", "description": "Longitude coordinate" },
+        "specialties": { "type": "array", "items": { "type": "string" }, "description": "List of medical specialties" },
+        "rating": { "type": "number", "description": "User rating (1-5)" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last updated timestamp" }
+      },
+      "required": ["name", "phone"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/profile/medical": {
+      "schema": "UserProfile",
+      "description": "The medical profile document for a user"
+    },
+    "/users/{userId}/hospitals/{hospitalId}": {
+      "schema": "CustomHospital",
+      "description": "Custom hospitals added by the user"
+    }
+  }
+}
